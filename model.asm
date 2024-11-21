@@ -90,9 +90,9 @@ model:
 	sw	    $ra, 0($sp)
 
 
-    la      $t0, tt_amt_moves_made #can be lw only.
-    lw      $t1, 0($t0)
-    beq     $t1, $zero, continue_play_1
+    # la      $t0, tt_amt_moves_made #can be lw only.
+    # lw      $t1, 0($t0)
+    # beq     $t1, $zero, continue_play_1
 
     jal check_if_num
 
@@ -438,7 +438,3 @@ cont_func:
 
 
     
-
-
-
-
