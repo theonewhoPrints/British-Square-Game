@@ -19,13 +19,6 @@
 #
 # OUTPUT:
 #	A "before" line with the numbers in the order they were
-#	entered, and an "after" line with the same numbers sorted.
-#
-#
-# REVISION HISTORY:
-#	Jan  2017	- P. White, added more/better merge tests 
-#	Aug  2016	- P. White, Initial version of merge sort exp.
-#
 
 
 #------------------------------- Fix into real header
@@ -57,30 +50,70 @@ array:
         .word newline, game_header_text_3, default_row, row_1, num_row_2
         .word default_row, row_4, num_row_5, default_row, row_7
         .word num_row_8, default_row, row_10, num_row_11, default_row
-        .word row_13, num_row_14, default_row, game_header_text_3, newline
+        .word row_13, num_row_14, default_row, game_header_text_3
 
 length:
-        .word 20 #look at how phil does it. 
+        .word 19 #look at how phil does it. 
+
+X_moves_made:
+        .space 100 # 4 * 25 moves a player can make
+
+O_moves_made:
+        .space 100 # 4 * 25 moves a player can make
+
+X_amt_moves_made:
+        .word 0
+
+O_amt_moves_made: #should be on  bottomsss
+        .word 0
+
+O_illegal_moves:
+        .space 100 # do a another loop so if there's smthn already inside we don't add it twice
+
+X_illegal_moves:
+        .space 100 # do a another loop so if there's smthn already inside we don't add it twice
+
+O_illegal_indx:
+        .word 0
+
+
+X_illegal_indx:
+        .word 0
+
 
 
 parm_X:
-        #.word X_moves_made
-        .word X_loop
-        #.word X_possible_moves #we can do if this is equal to zero in print
-        #say no more moves possible. #because 
-        #of illegal move square is blocked, and also from there can 
-        # go to certain loop
+        .word X_moves_made #0
+        .word X_loop            #4
+        #.word X_possible_moves
+        .word X_amt_moves_made #8
+        .word X                 #12
+        .word O_illegal_moves   #16
+        .word O_illegal_indx    #20
+        .word quit_text_X
+
+                
+
 
 parm_O:
-        #.word O_moves_made
+        .word O_moves_made
         .word O_loop
-        #.word O_possible_moves #we can do if this is equal to zero in print
-        #say no more moves possible. #because 
-        #of illegal move square is blocked, and also from there can 
-        # go to certain loop
+        #.word O_possible_moves 
+        .word O_amt_moves_made
+        .word O
+        .word X_illegal_moves
+        .word X_illegal_indx
+        .word quit_text_O
 
 
+##########################################################
         .align	0
+
+X: #maybe make non null terminiating
+        .asciiz "X" #let's instead load whichever one based on param.
+
+O:
+        .asciiz "O" #let's instead load whichever one based on param.
 
 newline:
 	.asciiz	"\n"
@@ -92,7 +125,7 @@ game_header_text_2:
         .asciiz "**     British Square     **"
 
 game_header_text_3:
-        .asciiz "***********************"
+        .asciiz "***********************\n"
 
 
 default_row:
@@ -123,6 +156,9 @@ num_row_11:
 num_row_14:
         .asciiz "*|20 |21 |22 |23 |24 |*\n"
 
+hello:
+        .asciiz "hello\n"
+
 input_text1:
         .asciiz "\nPlayer X enter a move (-2 to quit, -1 to skip move): "
 
@@ -136,6 +172,17 @@ error_1_text:
 error_2_text:
         .asciiz "\nIllegal move, can't place first stone of game in middle square\n"
 
+error_3_text:
+        .asciiz "\nIllegal move, square is occupied\n"
+
+quit_text_X:
+        .asciiz "\nPlayer X quit the game\n"
+
+quit_text_O:
+        .asciiz "\nPlayer O quit the game\n"
+
+
+
 #-------------------------------
 
 #
@@ -148,6 +195,11 @@ error_2_text:
         .globl printing
         .globl error_1
         .globl error_2
+        .globl error_3
+        .globl skip
+        .globl X_moves_made
+        .globl end_pr
+        #.globl quitting
 
 
 #
@@ -160,14 +212,28 @@ main:
 	# sw	$s6, 0($sp)
         jal     print_header #just stub for printing algorithm.
         jal     print_grid
-        jal     input_output
+        jal     input_output #I can make into j 
+        #j       main_done
 
-main_done:
-        # lw	$s6, 0($sp)
-        # lw	$s7, 4($sp)
-	lw	$ra, 4($sp)	# restore the ra
+        li      $v0, PRINT_STRING
+        la      $a0, hello
+        syscall
+
+
+        lw	$ra, 0($sp)	# restore the ra
 	addi	$sp, $sp, 4	# deallocate stack space
-	jr	$ra		# return from main and exit spim
+	j       done	# return from main and exit spim
+
+
+# main_done:
+#         # lw	$s6, 0($sp)
+#         # lw	$s7, 4($sp)
+#         li      $v0, PRINT_STRING
+#         la      $a0, hello
+#         syscall
+# 	lw	$ra, 0($sp)	# restore the ra
+# 	addi	$sp, $sp, 4	# deallocate stack space
+# 	jr	$ra		# return from main and exit spim
 
 
 #-------------------------------
@@ -238,35 +304,33 @@ print_grid_updating:
 
 
 input_output:
-        addi    $sp, $sp, -4
-        sw      $ra, 0($sp)
-
-        #li      $a1, 0    #don't load in arguments. 
-        # li      $t0, 0
-        # li      $t1, 3
-        # move    $t1, $a0 #line 306 in merge_sort.asm # move a0 into t1
-        # li      $v0, PRINT_STRING
-        # la      $a0, input_text1
-        # syscall
-
+        addi    $sp, $sp, -8
+        sw      $ra, 4($sp)
+        sw      $s0, 0($sp)
 
 
 
 X_loop:
-        #li      $a0, 3
-        
-        #beq     $t0, $a1, io_done
+       
         li      $v0, PRINT_STRING
         la      $a0, input_text1
         syscall
         li      $v0, READ_INT
         syscall
-        sw      $v0, 0($a1)
+        # sw      $v0, 0($a1) #switch to move later.
+        move    $a1, $v0
+        la      $a0, parm_O
         la      $a2, parm_X
-        jal     model           #will change prints based on condtion
-                                # then we print those things
-        # addi    $t0, $t0, 1
-        # j       io_loop
+        #la      $s0, O_loop
+        la      $a3, array #might mess with s0 later used for opposite.
+        #jal     play_1
+
+
+        li      $t1, -2
+        beq     $a1, $t1, quitting
+
+        jal     model
+        jal     print_grid           
 
         # display over here
 
@@ -276,19 +340,27 @@ O_loop:
         syscall
         li      $v0, READ_INT
         syscall
-        sw      $v0, 0($a1)
+        # sw      $v0, 0($a1) #switch to move later.
+        move    $a1, $v0
+        la      $a0, parm_X
         la      $a2, parm_O
+        #la      $s0, X_loop  #remeber to use proper adddress for this 
+        la      $a3, array #might mess with s0 later used for opposite.
+
+        li      $t1, -2
+        beq     $a1, $t1, quitting
+
+        #jal     play_1
         jal     model
-        jal     X_loop
+        jal     print_grid
+        j       X_loop
 
 
 
 
 
-io_done:
-        lw	$ra, 0($sp)
-	addi	$sp, $sp, 4
-	jr	$ra
+
+	
         
         
         
@@ -297,39 +369,75 @@ error_1:
         li      $v0, PRINT_STRING
         la      $a0, error_1_text
         syscall
-        lw      $t0, 0($a2)
+        lw      $t0, 4($a2)
         jalr    $t0
 
 error_2:
         li      $v0, PRINT_STRING
         la      $a0, error_2_text
         syscall
-        lw      $t0, 0($a2)
+        lw      $t0, 4($a2)
         jalr    $t0
 
 
-        
+error_3:
+        li      $v0, PRINT_STRING
+        la      $a0, error_3_text
+        syscall
+        lw      $t0, 4($a2)
+        jalr    $t0
 
+
+
+
+skip:
+        jalr    $s0
+
+        
+quitting:
+
+
+        # addi	$sp, $sp, -4   
+	# sw	    $ra, 0($sp)
+
+        
+        # lw	$ra, 4($sp)
+        # lw      $s0, 0($sp)
+	# addi	$sp, $sp, 8
+
+
+        li      $v0, PRINT_STRING
+        lw      $a0, 24($a2)
+        syscall
+        lw	$ra, 4($sp)
+        lw      $s0, 0($sp)
+	addi	$sp, $sp, 8
+        jr      $ra
+       
+
+# io_done:
+#         # li      $v0, PRINT_STRING
+#         # la      $a0, hello
+#         # syscall
+#         lw	$ra, 4($sp)
+#         lw      $s0, 0($sp)
+# 	addi	$sp, $sp, 8
+#         jr      $ra
+
+
+
+done:
+
+
+
+# end_pr:
 
 
 #
 # End of printing program.
 #
 
-# FIGURE OUT HOW TO FIX THE SQUARES. we can update a string array.
-# should I empty the addresses of a0 afterwards?? 
-# when a move is made, the view will be updated/called. 
-# game conditions and such are stord in the system, the bored is all 
-# stored in data structures. 
-# once we export them we can re show them again in the function.
-# see how to export a array like from virtual function box lab.
-# and merge and sort on expandng and sending out arrays.
 
-# MODEL:      where we will be changing board arrays and seeing input from 
-# controller (like if controller said this load this 
-# .word to print speciically. 
-# VIEW:       where we will be doing loops to update board 
-# CONTROLLER: where we will be doing askig i/o
 
 
 
