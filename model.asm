@@ -9,7 +9,7 @@
 # This file contains the functionality of moving around in british square
 
 #-------------------------------
-
+PRINT_INT = 1
 
 .text
 .align 2
@@ -17,6 +17,7 @@
 .globl error_1
 .globl error_2
 .globl error_3
+.globl error_4	
 .globl skip
 .globl X_moves_made
 .globl end_pr
@@ -52,6 +53,12 @@ valid_input:
 .word -1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
 length:
 .word 26
+
+
+valid_spaces:
+        .word 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 
+length_spaces:
+        .word 25
 
 
 total_moves_made:
@@ -109,6 +116,7 @@ jal check_if_num
 #jal if_neg1
 
 jal if_made
+jal if_illegal
 
 jal store_move
 jal store_illegals
@@ -275,6 +283,26 @@ store_illegals:
     addi    $sp, $sp, -8
     sw	    $ra, 4($sp)	
     sw      $s0, 0($sp)
+
+    ########RYLIE CHANGES########
+    lw      $t0, 20($a2) # O_illegal_moves amount address
+    lw      $t1, 0($t0)  # O illegal moves amount index value. #index here might be f'ed up idk
+
+
+    mul     $t2, $t1, 4  #get address 
+
+
+    lw      $t3, 16($a2) #O actual stones illegal for it
+
+
+    add     $t4, $t3, $t2 #adress shift + base 
+    sw      $a1, 0($t4)
+    addi    $t1, $t1,1
+
+    sw      $t1, 0($t0)
+
+
+    ########RYLIE CHANGES########
     
 
     ############CHECKERS FOR LEFT 
@@ -491,6 +519,66 @@ minus_five:
 #----------------------------------------------------------#
     ####################EDGES##################################
     #----------------------------------------------------------#
+
+if_illegal: #check if it occurs on first loop by printing vals after first
+            # loop is done.
+
+#steps: 1. create stack 
+#       2. get the opposite vbox(a0) for your illegals
+#       3. check if current a1 is equal to a illegal 
+#       4. we will do this with a loop, use the length 
+#          you kept track of too help with this.
+
+        addi    $sp, $sp, -12
+        sw	    $ra, 8($sp)	
+        sw      $s1, 4($sp)
+        sw      $s0, 0($sp)
+
+
+        lw      $s0, 16($a0) #this is the illegal moves 
+        lw      $s1, 20($a0) #this r the indexes.
+        # lw      $t3, 0($t1) #new indexes
+        lw      $t3, 0($s1) #new indexes
+
+
+forloop: # A CORRECT LOOP AND PREVIOUS ACCESSING PARAMS, USE FOR INSPO
+        # make conrete way on accessing and storing moves.(this one)
+        
+        
+        
+
+        beq     $t3, $zero, cont
+        lw      $t2, 0($s0) #new iillegal moves
+
+        move    $a0, $t3
+        li      $v0, PRINT_INT
+        syscall
+
+        # move    $a0, $t2
+        # li      $v0, PRINT_INT
+        # syscall
+        beq     $a1, $t2, blocked
+
+        addi    $s0, $s0, 4
+        addi    $t3, $t3, -1
+        j       forloop
+
+cont: #combine w/smthn similiar
+
+        lw	    $ra, 8($sp)	
+        lw      $s1, 4($sp)
+        lw      $s0, 0($sp)
+        addi    $sp, $sp, 12
+        jr      $ra
+
+blocked:
+        lw	    $ra, 8($sp)	
+        lw      $s1, 4($sp)
+        lw      $s0, 0($sp)
+        addi    $sp, $sp, 12
+        j		error_4				# jump to error_4
+        
+
 
 
 
