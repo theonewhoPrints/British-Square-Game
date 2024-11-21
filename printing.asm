@@ -222,7 +222,7 @@ main:
 
         lw	$ra, 0($sp)	# restore the ra
 	addi	$sp, $sp, 4	# deallocate stack space
-	j       done	# return from main and exit spim
+	jr      $ra  # return from main and exit spim
 
 
 # main_done:
@@ -327,10 +327,14 @@ X_loop:
 
 
         li      $t1, -2
-        beq     $a1, $t1, quitting
+        beq     $a1, $t1, quitter
+
+        # li      $t1, -1
+        # beq     $a1, $t1, skip
 
         jal     model
-        jal     print_grid           
+        jal     print_grid
+        # j       quitting        
 
         # display over here
 
@@ -347,16 +351,26 @@ O_loop:
         #la      $s0, X_loop  #remeber to use proper adddress for this 
         la      $a3, array #might mess with s0 later used for opposite.
 
-        li      $t1, -2
-        beq     $a1, $t1, quitting
+        # li      $t1, -2
+        # beq     $a1, $t1, quitting
 
         #jal     play_1
+
+        li      $t1, -2
+        beq     $a1, $t1, quitter
+
+        # li      $t1, -1
+        # beq     $a1, $t1, skip
+
+
         jal     model
         jal     print_grid
         j       X_loop
 
 
 
+quitter:
+        j       quitting
 
 
 
@@ -366,6 +380,8 @@ O_loop:
         
 
 error_1:
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
         li      $v0, PRINT_STRING
         la      $a0, error_1_text
         syscall
@@ -373,6 +389,9 @@ error_1:
         jalr    $t0
 
 error_2:
+
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
         li      $v0, PRINT_STRING
         la      $a0, error_2_text
         syscall
@@ -381,6 +400,8 @@ error_2:
 
 
 error_3:
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
         li      $v0, PRINT_STRING
         la      $a0, error_3_text
         syscall
@@ -391,7 +412,9 @@ error_3:
 
 
 skip:
-        jalr    $s0
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
+        jr    $s0
 
         
 quitting:
@@ -409,20 +432,16 @@ quitting:
         li      $v0, PRINT_STRING
         lw      $a0, 24($a2)
         syscall
+        
+
+io_done:
+        # li      $v0, PRINT_STRING
+        # la      $a0, hello
+        # syscall
         lw	$ra, 4($sp)
         lw      $s0, 0($sp)
 	addi	$sp, $sp, 8
         jr      $ra
-       
-
-# io_done:
-#         # li      $v0, PRINT_STRING
-#         # la      $a0, hello
-#         # syscall
-#         lw	$ra, 4($sp)
-#         lw      $s0, 0($sp)
-# 	addi	$sp, $sp, 8
-#         jr      $ra
 
 
 
@@ -436,6 +455,10 @@ done:
 #
 # End of printing program.
 #
+
+
+
+
 
 
 
