@@ -200,6 +200,9 @@ error_2_text:
 error_3_text:
         .asciiz "\nIllegal move, square is occupied\n"
 
+error_4_text:
+        .asciiz "\nIllegal move, square is blocked\n"
+
 quit_text_X:
         .asciiz "\nPlayer X quit the game\n"
 
@@ -221,6 +224,7 @@ quit_text_O:
         .globl error_1
         .globl error_2
         .globl error_3
+        .globl error_4
         .globl skip
         .globl X_moves_made
         .globl end_pr
@@ -320,27 +324,24 @@ input_output:
 
 
 X_loop:
-        la      $a0, parm_O
-        la      $a2, parm_X
-        la      $s0, O_loop
-        la      $a3, array #might mess with s0 later used for opposite.
+        
 
-        li      $t3, 48
-        lw      $t0, 20($a0)
-        lw      $t0, 0($t0)
-        lw      $t1, 20($a2)
-        lw      $t1, 0($t1)
+        # li      $t3, 48
+        # lw      $t0, 20($a0)
+        # lw      $t0, 0($t0)
+        # lw      $t1, 20($a2)
+        # lw      $t1, 0($t1)
 
-        move    $t5, $a0
-        move    $a0, $t0
-        li      $v0, 1
-        syscall
-        move    $a0, $t5
+        # move    $t5, $a0
+        # move    $a0, $t0
+        # li      $v0, 1
+        # syscall
+        # move    $a0, $t5
 
-        add     $t2, $t0, $t1
-        beq     $t2, $t3, io_done
-        li      $t2, 24
-        beq     $t0, $t2, O_loop
+        # add     $t2, $t0, $t1
+        # beq     $t2, $t3, io_done
+        # li      $t2, 24
+        # beq     $t0, $t2, O_loop
 
         li      $v0, PRINT_STRING
         la      $a0, input_text1
@@ -349,6 +350,12 @@ X_loop:
         syscall
         # sw      $v0, 0($a1) #switch to move later.
         move    $a1, $v0
+
+        la      $a0, parm_O
+        la      $a2, parm_X
+        la      $s0, O_loop
+        la      $a3, array #might mess with s0 later used for opposite.
+
         
         li      $t0, -2
         beq     $t0, $a1, quitting
@@ -360,28 +367,25 @@ X_loop:
         # display over here
 
 O_loop:
-        la      $a0, parm_X
-        la      $a2, parm_O
-        la      $s0, X_loop  #remeber to use proper adddress for this 
-        la      $a3, array #might mess with s0 later used for opposite.
         
-        li      $t3, 48
-        lw      $t0, 20($a0)
-        lw      $t0, 0($t0)
-        lw      $t1, 20($a2)
-        lw      $t1, 0($t1)
-
-        move    $t5, $a0
-        move    $a0, $t0
-        li      $v0, 1
-        syscall
-        move    $a0, $t5
-
-        add     $t2, $t0, $t1
         
-        beq     $t2, $t3, io_done
-        li      $t2, 24
-        beq     $t0, $t2, X_loop
+        # li      $t3, 48
+        # lw      $t0, 20($a0)
+        # lw      $t0, 0($t0)
+        # lw      $t1, 20($a2)
+        # lw      $t1, 0($t1)
+
+        # move    $t5, $a0
+        # move    $a0, $t0
+        # li      $v0, 1
+        # syscall
+        # move    $a0, $t5
+
+        # add     $t2, $t0, $t1
+        
+        # beq     $t2, $t3, io_done
+        # li      $t2, 24
+        # beq     $t0, $t2, X_loop
 
         li      $v0, PRINT_STRING
         la      $a0, input_text2
@@ -390,6 +394,11 @@ O_loop:
         syscall
         
         move    $a1, $v0
+
+        la      $a0, parm_X
+        la      $a2, parm_O
+        la      $s0, X_loop  #remeber to use proper adddress for this 
+        la      $a3, array #might mess with s0 later used for opposite.
 
         li      $t0, -2
         beq     $t0, $a1, quitting
@@ -427,6 +436,15 @@ error_3:
         lw      $t0, 4($a2)
         jr      $t0
 
+error_4:
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
+        li      $v0, PRINT_STRING
+        la      $a0, error_4_text
+        syscall
+        lw      $t0, 4($a2)
+        jr      $t0
+
 
 
 
@@ -456,7 +474,7 @@ results:
         la      $a0, results_O_text
         syscall
 
-        la      $t0, parm_X
+        la      $t0, parm_O
         lw      $t1, 8($t0)
         lw      $a0, 0($t1)
         li      $v0, PRINT_INT
