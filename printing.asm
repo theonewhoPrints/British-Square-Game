@@ -43,7 +43,10 @@ PRINT_INT = 1
 	.data
 	.align	2		# word data must be on word boundaries
         
-
+valid_spaces:
+        .word 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 
+length_spaces:
+        .word 25
 
 array:
         # .space edit this param
@@ -142,13 +145,20 @@ tie_text:
         .asciiz "**   Game is a tie    **\n"
 
 results_1_text:
-        .asciiz "Game Totals\n"
+        .asciiz "\nGame Totals\n"
 
 results_X_text:
         .asciiz "X's total="
 
 results_O_text:
         .asciiz " O's total="
+
+
+no_legal_O:
+        .asciiz "\nPlayer O has no legal moves, turn skipped.\n"
+
+no_legal_X:
+        .asciiz "\nPlayer X has no legal moves, turn skipped.\n"
 
 
 
@@ -200,11 +210,14 @@ error_2_text:
 error_3_text:
         .asciiz "\nIllegal move, square is occupied\n"
 
+error_4_text:
+        .asciiz "\nIllegal move, square is blocked\n"
+
 quit_text_X:
-        .asciiz "\nPlayer X quit the game\n"
+        .asciiz "\Player X quit the game.\n"
 
 quit_text_O:
-        .asciiz "\nPlayer O quit the game\n"
+        .asciiz "\Player O quit the game.\n"
 
 
 
@@ -221,6 +234,7 @@ quit_text_O:
         .globl error_1
         .globl error_2
         .globl error_3
+        .globl error_4
         .globl skip
         .globl X_moves_made
         .globl end_pr
@@ -237,9 +251,9 @@ main:
         jal     input_output
 
 main_done:
-        li      $v0, PRINT_STRING
-        la      $a0, hello
-        syscall
+        # li      $v0, PRINT_STRING
+        # la      $a0, hello
+        # syscall
 	lw	$ra, 0($sp)	# restore the ra
 	addi	$sp, $sp, 4	# deallocate stack space
 	jr	$ra		# return from main and exit spim
@@ -321,26 +335,27 @@ input_output:
 
 X_loop:
         la      $a0, parm_O
-        la      $a2, parm_X
-        la      $s0, O_loop
-        la      $a3, array #might mess with s0 later used for opposite.
+        jal     valid_count
+        move    $a2, $v0
+        la      $a0, parm_X
+        jal     valid_count
+        move    $a3, $v0
+        move    $t0, $a2                # num of valid moves
+        move    $t1, $a3
 
-        li      $t3, 48
-        lw      $t0, 20($a0)
-        lw      $t0, 0($t0)
-        lw      $t1, 20($a2)
-        lw      $t1, 0($t1)
+        # move    $a0, $t0
+        # li      $v0, 1
+        # syscall
+        # move    $a0, $t1
+        # li      $v0, 1
+        # syscall
 
-        move    $t5, $a0
-        move    $a0, $t0
-        li      $v0, 1
-        syscall
-        move    $a0, $t5
+        
 
         add     $t2, $t0, $t1
-        beq     $t2, $t3, io_done
-        li      $t2, 24
-        beq     $t0, $t2, O_loop
+        beq     $t2, $zero, winner
+
+        beq     $t0, $zero, no_moves_X
 
         li      $v0, PRINT_STRING
         la      $a0, input_text1
@@ -349,6 +364,11 @@ X_loop:
         syscall
         # sw      $v0, 0($a1) #switch to move later.
         move    $a1, $v0
+
+        la      $a0, parm_O
+        la      $a2, parm_X
+        la      $s0, O_loop
+        la      $a3, array #might mess with s0 later used for opposite.
         
         li      $t0, -2
         beq     $t0, $a1, quitting
@@ -361,27 +381,26 @@ X_loop:
 
 O_loop:
         la      $a0, parm_X
-        la      $a2, parm_O
-        la      $s0, X_loop  #remeber to use proper adddress for this 
-        la      $a3, array #might mess with s0 later used for opposite.
+        jal     valid_count
+        move    $a2, $v0
+        la      $a0, parm_O
+        jal     valid_count
+        move    $a3, $v0
+        move    $t0, $a2                # num of valid moves
+        move    $t1, $a3
+
+        # move    $a0, $t0
+        # li      $v0, 1
+        # syscall
+        # move    $a0, $t1
+        # li      $v0, 1
+        # syscall
         
-        li      $t3, 48
-        lw      $t0, 20($a0)
-        lw      $t0, 0($t0)
-        lw      $t1, 20($a2)
-        lw      $t1, 0($t1)
-
-        move    $t5, $a0
-        move    $a0, $t0
-        li      $v0, 1
-        syscall
-        move    $a0, $t5
-
+        
         add     $t2, $t0, $t1
-        
-        beq     $t2, $t3, io_done
-        li      $t2, 24
-        beq     $t0, $t2, X_loop
+        beq     $t2, $zero, winner #print the scores and then be done 
+
+        beq     $t0, $zero, no_moves_O #print no valid moves for curr player then skip
 
         li      $v0, PRINT_STRING
         la      $a0, input_text2
@@ -391,6 +410,12 @@ O_loop:
         
         move    $a1, $v0
 
+        la      $a0, parm_X
+        la      $a2, parm_O
+        la      $s0, X_loop  #remeber to use proper adddress for this 
+        la      $a3, array #might mess with s0 later used for opposite.
+        
+
         li      $t0, -2
         beq     $t0, $a1, quitting
         li      $t0, -1
@@ -398,6 +423,92 @@ O_loop:
         jal     model
         jal     print_grid
         j       X_loop
+
+valid_count:
+        add     $sp, $sp, -48
+        sw      $ra, 40($sp)
+        sw      $s7, 32($sp)
+        sw      $s6, 28($sp)
+        sw      $s5, 24($sp)
+        sw      $s4, 20($sp)
+        sw      $s3, 16($sp)
+        sw      $s2, 12($sp)
+        sw      $s1, 8($sp)
+        sw      $s0, 4($sp)
+
+        la      $t0, valid_spaces               # Load address of main list
+        la      $t1, length_spaces              # Load size of main list
+        lw      $t1, 0($t1)
+        lw      $t2, 16($a0)                    # Load address of invalid list
+        lw      $t3, 20($a0)                    # Load size of invalid list
+        lw      $t3, 0($t3)
+
+        li      $t4, 0                
+
+valid_loop:
+        beq     $t1, $zero, done                
+        lw      $t5, 0($t0)                     # Load current number from main list
+        addi    $t0, $t0, 4                     
+        addi    $t1, $t1, -1                    
+
+    
+        lw      $t2, 16($a0)                    # Reset pointer to invalid list
+        lw      $t6, 20($a0)                    # Reload size of invalid list
+        lw      $t6, 0($t6)
+    
+        # li      $t7, 0               
+
+invalid_loop:
+        beq     $t6, $zero, check_found         
+        lw      $t8, 0($t2)                     # Load current number from invalid list
+        addi    $t2, $t2, 4                     
+        addi    $t6, $t6, -1                    
+        beq     $t5, $t8, valid_loop          # If match, mark as found
+        j       invalid_loop
+
+# number_found:
+#         li $t7, 1                               # mark as found
+#         j invalid_loop
+
+check_found:
+        # li      $t8, 1
+        # beq     $t7, $t8, valid_loop            # If found, skip to next main list item
+        addi    $t4, $t4, 1                     # Increment count if not found (a valid space!)
+        j valid_loop
+
+
+
+no_moves_O:
+
+        li      $v0, PRINT_STRING
+        la      $a0, no_legal_O
+        syscall
+        j       X_loop
+
+
+no_moves_X:
+
+        li      $v0, PRINT_STRING
+        la      $a0, no_legal_X
+        syscall
+        j       O_loop
+
+
+
+done:
+        move    $v0, $t4
+
+        lw      $ra, 40($sp)
+        lw      $s7, 32($sp)
+        lw      $s6, 28($sp)
+        lw      $s5, 24($sp)
+        lw      $s4, 20($sp)
+        lw      $s3, 16($sp)
+        lw      $s2, 12($sp)
+        lw      $s1, 8($sp)
+        lw      $s0, 4($sp)
+        add     $sp, $sp, 48
+        jr      $ra
 
 error_1:
         lw      $ra, 0($sp)
@@ -427,10 +538,20 @@ error_3:
         lw      $t0, 4($a2)
         jr      $t0
 
+error_4:
+        lw      $ra, 0($sp)
+        addi    $sp, $sp, 4
+        li      $v0, PRINT_STRING
+        la      $a0, error_4_text
+        syscall
+        lw      $t0, 4($a2)
+        jr      $t0
+
 
 
 
 skip:
+        jal     print_grid 
         jr      $s0
 
 
@@ -456,17 +577,71 @@ results:
         la      $a0, results_O_text
         syscall
 
-        la      $t0, parm_X
+        la      $t0, parm_O
         lw      $t1, 8($t0)
         lw      $a0, 0($t1)
         li      $v0, PRINT_INT
         syscall
 
+        li      $v0, PRINT_STRING
+        la      $a0, newline
+        syscall
+
         jr      $ra
+
+winner:
+        jal     results
+        la      $t0, parm_X
+        lw      $t1, 8($t0)
+
+
+        la      $t2, parm_O
+        lw      $t3, 8($t2)
+
+        beq     $t1, $t3, tie
+        slt     $t4, $t1, $t3 #if X is less than O
+        beq     $t4, $zero, X_wins #x is greater.
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_O
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        j       io_done
+
+
+
+X_wins:
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_X
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        j       io_done
+
+tie:
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, tie_text
+        syscall
+        li      $v0, PRINT_STRING
+        la      $a0, winning_text_1
+        syscall
+        j       io_done
+    
 
         
 quitting:
-        #maybe no stack here - check later.
+        #maybe no stack here - check later. - yes checkkk, but cuz now in printing
         jal     results
         li      $v0, PRINT_STRING
         lw      $a0, 24($a2)
@@ -479,9 +654,9 @@ quitting:
 
 
 io_done:
-        li      $v0, PRINT_STRING
-        la      $a0, hello
-        syscall
+        # li      $v0, PRINT_STRING
+        # la      $a0, hello
+        # syscall
         lw	$ra, 4($sp)
         lw      $s0, 0($sp)
 	addi	$sp, $sp, 8
